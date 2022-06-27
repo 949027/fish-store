@@ -8,10 +8,14 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Filters, Updater
 from telegram.ext import CallbackQueryHandler, CommandHandler, MessageHandler
 
-from moltin_api import *
+from moltin_api import get_all_products, get_cart, get_product, \
+    get_image_url, add_product_to_cart, delete_cart_item, create_customer, \
+    create_moltin_token
 
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO,
+)
 logger = logging.getLogger(__name__)
 
 load_dotenv()
@@ -21,21 +25,23 @@ _moltin_token = {}
 
 moltin_client_id = os.getenv('MOLTIN_CLIENT_ID')
 moltin_client_secret = os.getenv('MOLTIN_CLIENT_SECRET')
-token_expiration = os.getenv('TOKEN_EXPIRATION')
+moltin_token_expiration = os.getenv('TOKEN_EXPIRATION')
 
 
 def send_catalog(bot, update):
     products = get_all_products(get_moltin_token(
         moltin_client_id,
         moltin_client_secret,
-        token_expiration,
+        moltin_token_expiration,
     ))
     keyboard = [
         [InlineKeyboardButton(product['name'], callback_data=product['id'])]
         for product in products
     ]
-    keyboard.append([InlineKeyboardButton('Корзина', callback_data='Корзина')])
-    reply_markup =InlineKeyboardMarkup(keyboard)
+    keyboard.append(
+        [InlineKeyboardButton('Корзина', callback_data='Корзина')]
+    )
+    reply_markup = InlineKeyboardMarkup(keyboard)
     if update.callback_query:
         update.callback_query.message.reply_text(
             text='Сегодня в продаже:',
@@ -43,7 +49,10 @@ def send_catalog(bot, update):
         )
         return
     elif update.message:
-        update.message.reply_text(text='Сегодня в продаже:', reply_markup=reply_markup)
+        update.message.reply_text(
+            text='Сегодня в продаже:',
+            reply_markup=reply_markup,
+        )
         return
 
 
@@ -51,26 +60,40 @@ def send_cart(bot, update):
     query = update.callback_query
     chat_id = query.message.chat_id
 
-    cart = get_cart(moltin_bearer_token, chat_id)
+    cart = get_cart(
+        get_moltin_token(
+            moltin_client_id, moltin_client_secret, moltin_token_expiration
+        ),
+        chat_id,
+    )
     items = cart['data']
     cart_keyboard = []
     if items:
-        cart_keyboard.append([InlineKeyboardButton('Оплатить', callback_data='Оплатить')])
+        cart_keyboard.append(
+            [InlineKeyboardButton('Оплатить', callback_data='Оплатить')]
+        )
         text = ''
         for item in items:
-            text = text + '{}\n{}\n{} за кг\nВ корзине {} кг на {}\n\n'.format(
+            text += '{}\n{}\n{} за кг\nВ корзине {} кг на {}\n\n'.format(
                 item['name'],
                 item['description'],
                 item['meta']['display_price']['with_tax']['unit']['formatted'],
                 item['quantity'],
                 item['meta']['display_price']['with_tax']['value']['formatted']
             )
-            cart_keyboard.append([InlineKeyboardButton(f'Убрать {item["name"]}', callback_data=item['id'])])
+            cart_keyboard.append([InlineKeyboardButton(
+                f'Убрать {item["name"]}',
+                callback_data=item['id']
+            )])
 
-        text = text + 'Итого: ' + cart['meta']['display_price']['with_tax']['formatted']
+        text += 'Итого: {}'.format(
+            cart['meta']['display_price']['with_tax']['formatted']
+        )
     else:
         text = 'Корзина пуста'
-    cart_keyboard.append([InlineKeyboardButton('В меню', callback_data='В меню')])
+    cart_keyboard.append(
+        [InlineKeyboardButton('В меню', callback_data='В меню')]
+    )
     reply_markup = InlineKeyboardMarkup(cart_keyboard)
     bot.send_message(chat_id, text, reply_markup=reply_markup)
 
@@ -91,13 +114,24 @@ def handle_menu(bot, update):
         )
         return 'HANDLE_CART'
     product_id = query.data
-    product = get_product(moltin_bearer_token, product_id)
+    product = get_product(
+        get_moltin_token(
+            moltin_client_id, moltin_client_secret, moltin_token_expiration
+        ),
+        product_id,
+    )
     image_id = product['relationships']['main_image']['data']['id']
-    image_url = get_image_url(moltin_bearer_token, image_id)
-    text = '{}\n{}'.format(
+    image_url = get_image_url(
+        get_moltin_token(
+            moltin_client_id, moltin_client_secret, moltin_token_expiration
+        ),
+        image_id,
+    )
+    text = '{}\n{}\n\n{} за кг\n{} кг в наличии'.format(
         product['name'],
         product['description'],
-        #product['without_tax'] #TODO добавить описание
+        product['meta']['display_price']['with_tax']['formatted'],
+        product['meta']['stock']['level']
     )
     weight_options = [1, 3, 5]
     weight_keyboard = [
@@ -112,7 +146,12 @@ def handle_menu(bot, update):
         [InlineKeyboardButton('Корзина', callback_data='Корзина')],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    bot.send_photo(chat_id, image_url, caption=text, reply_markup=reply_markup)
+    bot.send_photo(
+        chat_id,
+        image_url,
+        caption=text,
+        reply_markup=reply_markup,
+    )
     bot.delete_message(
         chat_id=chat_id,
         message_id=query.message.message_id,
@@ -123,23 +162,27 @@ def handle_menu(bot, update):
 def handle_description(bot, update):
     query = update.callback_query
     chat_id = query.message.chat_id
+    bot.delete_message(
+            chat_id=chat_id,
+            message_id=query.message.message_id,
+        )
     if query.data == 'Корзина':
         send_cart(bot, update)
-        bot.delete_message(
-            chat_id=chat_id,
-            message_id=query.message.message_id,
-        )
         return 'HANDLE_CART'
     if query.data == 'Назад':
-        bot.delete_message(
-            chat_id=chat_id,
-            message_id=query.message.message_id,
-        )
         send_catalog(bot, update)
         return 'HANDLE_MENU'
     quantity, product_id = query.data.split('\n')
-    add_product_to_cart(moltin_bearer_token, str(chat_id), product_id, int(quantity))
-    return 'HANDLE_DESCRIPTION'
+    add_product_to_cart(
+        get_moltin_token(
+            moltin_client_id, moltin_client_secret, moltin_token_expiration
+        ),
+        str(chat_id),
+        product_id,
+        int(quantity),
+    )
+    send_catalog(bot, update)
+    return 'HANDLE_MENU'
 
 
 def handle_cart(bot, update):
@@ -156,7 +199,13 @@ def handle_cart(bot, update):
     if query.data == 'В меню':
         send_catalog(bot, update)
         return 'HANDLE_MENU'
-    delete_cart_item(moltin_bearer_token, chat_id, query.data)
+    delete_cart_item(
+        get_moltin_token(
+            moltin_client_id, moltin_client_secret, moltin_token_expiration
+        ),
+        chat_id,
+        query.data,
+    )
     send_cart(bot, update)
     bot.delete_message(
         chat_id=chat_id,
@@ -170,7 +219,15 @@ def wait_email(bot, update):
     username = update.message.chat.username
     chat_id = update.message.chat_id
     try:
-        create_customer(moltin_bearer_token, username, email)
+        create_customer(
+            get_moltin_token(
+                moltin_client_id,
+                moltin_client_secret,
+                moltin_token_expiration,
+            ),
+            username,
+            email,
+        )
     except requests.exceptions.HTTPError as error:
         if error.response.status_code == 422:
             text = 'E-mail введен некорректно. Повторите ввод'
@@ -181,6 +238,7 @@ def wait_email(bot, update):
 
     send_catalog(bot, update)
     return 'HANDLE_MENU'
+
 
 def error(bot, update, error):
     logger.warning('Update "%s" caused error "%s"', update, error)
@@ -215,7 +273,8 @@ def handle_users_reply(bot, update):
 
 def get_database_connection():
     """
-    Возвращает конекшн с базой данных Redis, либо создаёт новый, если он ещё не создан.
+    Возвращает конекшн с базой данных Redis, либо создаёт новый, если
+    он ещё не создан.
     """
     global _database
     if _database is None:
@@ -223,7 +282,12 @@ def get_database_connection():
         database_password = os.getenv("DATABASE_PASSWORD")
         database_host = os.getenv("DATABASE_HOST")
         database_port = os.getenv("DATABASE_PORT")
-        _database = redis.Redis(host=database_host, port=database_port, password=database_password, username=database_username)
+        _database = redis.Redis(
+            host=database_host,
+            port=database_port,
+            password=database_password,
+            username=database_username,
+        )
     return _database
 
 
@@ -232,7 +296,9 @@ def get_moltin_token(client_id, client_secret, token_expiration):
     if not _moltin_token or datetime.now() > _moltin_token['expires at']:
         _moltin_token = {
             'token': create_moltin_token(client_id, client_secret),
-            'expires at': datetime.now() + timedelta(seconds=int(token_expiration)),
+            'expires at': datetime.now() + timedelta(
+                seconds=int(token_expiration)
+            ),
         }
     print(_moltin_token)
     return _moltin_token['token']
