@@ -300,7 +300,6 @@ def get_moltin_token(client_id, client_secret, token_expiration):
                 seconds=int(token_expiration)
             ),
         }
-    print(_moltin_token)
     return _moltin_token['token']
 
 
