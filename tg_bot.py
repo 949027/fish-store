@@ -18,22 +18,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-load_dotenv()
-
 _database = None
 _moltin_token = {}
 
-moltin_client_id = os.getenv('MOLTIN_CLIENT_ID')
-moltin_client_secret = os.getenv('MOLTIN_CLIENT_SECRET')
-moltin_token_expiration = os.getenv('TOKEN_EXPIRATION')
-
 
 def send_catalog(bot, update):
-    products = get_all_products(get_moltin_token(
-        moltin_client_id,
-        moltin_client_secret,
-        moltin_token_expiration,
-    ))
+    products = get_all_products(get_moltin_token())
     keyboard = [
         [InlineKeyboardButton(product['name'], callback_data=product['id'])]
         for product in products
@@ -61,9 +51,7 @@ def send_cart(bot, update):
     chat_id = query.message.chat_id
 
     cart = get_cart(
-        get_moltin_token(
-            moltin_client_id, moltin_client_secret, moltin_token_expiration
-        ),
+        get_moltin_token(),
         chat_id,
     )
     items = cart['data']
@@ -115,16 +103,12 @@ def handle_menu(bot, update):
         return 'HANDLE_CART'
     product_id = query.data
     product = get_product(
-        get_moltin_token(
-            moltin_client_id, moltin_client_secret, moltin_token_expiration
-        ),
+        get_moltin_token(),
         product_id,
     )
     image_id = product['relationships']['main_image']['data']['id']
     image_url = get_image_url(
-        get_moltin_token(
-            moltin_client_id, moltin_client_secret, moltin_token_expiration
-        ),
+        get_moltin_token(),
         image_id,
     )
     text = '{}\n{}\n\n{} за кг\n{} кг в наличии'.format(
@@ -174,9 +158,7 @@ def handle_description(bot, update):
         return 'HANDLE_MENU'
     quantity, product_id = query.data.split('\n')
     add_product_to_cart(
-        get_moltin_token(
-            moltin_client_id, moltin_client_secret, moltin_token_expiration
-        ),
+        get_moltin_token(),
         str(chat_id),
         product_id,
         int(quantity),
@@ -200,9 +182,7 @@ def handle_cart(bot, update):
         send_catalog(bot, update)
         return 'HANDLE_MENU'
     delete_cart_item(
-        get_moltin_token(
-            moltin_client_id, moltin_client_secret, moltin_token_expiration
-        ),
+        get_moltin_token(),
         chat_id,
         query.data,
     )
@@ -220,11 +200,7 @@ def wait_email(bot, update):
     chat_id = update.message.chat_id
     try:
         create_customer(
-            get_moltin_token(
-                moltin_client_id,
-                moltin_client_secret,
-                moltin_token_expiration,
-            ),
+            get_moltin_token(),
             username,
             email,
         )
@@ -291,7 +267,10 @@ def get_database_connection():
     return _database
 
 
-def get_moltin_token(client_id, client_secret, token_expiration):
+def get_moltin_token():
+    client_id = os.getenv('MOLTIN_CLIENT_ID')
+    client_secret = os.getenv('MOLTIN_CLIENT_SECRET')
+    token_expiration = os.getenv('TOKEN_EXPIRATION')
     global _moltin_token
     if not _moltin_token or datetime.now() > _moltin_token['expires at']:
         _moltin_token = {
@@ -304,6 +283,7 @@ def get_moltin_token(client_id, client_secret, token_expiration):
 
 
 def main():
+    load_dotenv()
     token = os.getenv('TELEGRAM_TOKEN')
     updater = Updater(token)
     dispatcher = updater.dispatcher
