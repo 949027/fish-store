@@ -14,8 +14,7 @@ pip install -r requirements.txt
 ```
 4. Создайте файл `.env` и пропишите в нем переменные окружения:
 - MOLTIN_CLIENT_ID - id клиента Commerce Cloud API ([подробнее здесь](https://documentation.elasticpath.com/commerce-cloud/docs/developer/get-started/your-first-api-request.html));
-- MOLTIN_CLIENT_SECRET - ключ к Commerce Cloud API ([подробнее здесь](https://documentation.elasticpath.com/commerce-cloud/docs/developer/get-started/your-first-api-request.html));
-- TOKEN_EXPIRATION - периодичность обновления токена для доступа к Commerce Cloud API в секундах. У токена есть срок действия (1 час), необходимо указать время обновления не более 3600 сек; 
+- MOLTIN_CLIENT_SECRET - ключ к Commerce Cloud API ([подробнее здесь](https://documentation.elasticpath.com/commerce-cloud/docs/developer/get-started/your-first-api-request.html)); 
 - TELEGRAM_TOKEN - токен бота телеграм (получить у `@BotFather`);
 - DATABASE_HOST - адрес базы данных [REDIS](https://redislabs.com/);
 - DATABASE_PORT - номер порта для подключения к базе данных [REDIS](https://redislabs.com/);

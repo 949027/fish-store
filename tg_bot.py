@@ -267,14 +267,12 @@ def get_database_connection():
 def get_moltin_token():
     client_id = os.getenv('MOLTIN_CLIENT_ID')
     client_secret = os.getenv('MOLTIN_CLIENT_SECRET')
-    token_expiration = os.getenv('TOKEN_EXPIRATION')
     global _moltin_token
-    if not _moltin_token or datetime.now() > _moltin_token['expires at']:
+    if not _moltin_token or datetime.now() > _moltin_token['expires_at']:
+        token, expires_in = create_moltin_token(client_id, client_secret)
         _moltin_token = {
-            'token': create_moltin_token(client_id, client_secret),
-            'expires at': datetime.now() + timedelta(
-                seconds=int(token_expiration)
-            ),
+            'token': token,
+            'expires_at': datetime.now() + timedelta(seconds=expires_in),
         }
     return _moltin_token['token']
 

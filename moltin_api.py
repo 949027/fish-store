@@ -115,4 +115,5 @@ def create_moltin_token(client_id, client_secret):
         data=data,
     )
     response.raise_for_status()
-    return response.json()['access_token']
+    token = response.json()
+    return token['access_token'], token['expires_in']
