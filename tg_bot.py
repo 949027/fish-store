@@ -141,15 +141,19 @@ def handle_menu(bot, update):
 def handle_description(bot, update):
     query = update.callback_query
     chat_id = query.message.chat_id
-    bot.delete_message(
+    if query.data == 'Корзина':
+        send_cart(bot, update)
+        bot.delete_message(
             chat_id=chat_id,
             message_id=query.message.message_id,
         )
-    if query.data == 'Корзина':
-        send_cart(bot, update)
         return 'HANDLE_CART'
     if query.data == 'Назад':
         send_catalog(bot, update)
+        bot.delete_message(
+            chat_id=chat_id,
+            message_id=query.message.message_id,
+        )
         return 'HANDLE_MENU'
     quantity, product_id = query.data.split('\n')
     add_product_to_cart(
@@ -159,22 +163,30 @@ def handle_description(bot, update):
         int(quantity),
     )
     send_catalog(bot, update)
+    bot.delete_message(
+            chat_id=chat_id,
+            message_id=query.message.message_id,
+        )
     return 'HANDLE_MENU'
 
 
 def handle_cart(bot, update):
     query = update.callback_query
     chat_id = query.message.chat_id
-    bot.delete_message(
-            chat_id=chat_id,
-            message_id=query.message.message_id,
-        )
     if query.data == 'Оплатить':
         text = 'Напишите свой e-mail и наш менеджер свяжется с Вами'
         bot.send_message(chat_id=chat_id, text=text)
+        bot.delete_message(
+            chat_id=chat_id,
+            message_id=query.message.message_id,
+        )
         return 'WAIT_EMAIL'
     if query.data == 'В меню':
         send_catalog(bot, update)
+        bot.delete_message(
+            chat_id=chat_id,
+            message_id=query.message.message_id,
+        )
         return 'HANDLE_MENU'
     delete_cart_item(
         get_moltin_token(),
