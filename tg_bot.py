@@ -12,10 +12,7 @@ from moltin_api import get_all_products, get_cart, get_product, \
     get_image_url, add_product_to_cart, delete_cart_item, create_customer, \
     create_moltin_token
 
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO,
-)
+
 logger = logging.getLogger(__name__)
 
 _database = None
@@ -283,6 +280,10 @@ def get_moltin_token():
 
 
 def main():
+    logging.basicConfig(
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        level=logging.INFO,
+    )
     load_dotenv()
     token = os.getenv('TELEGRAM_TOKEN')
     updater = Updater(token)
