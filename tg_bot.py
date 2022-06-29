@@ -34,13 +34,11 @@ def send_catalog(bot, update):
             text='Сегодня в продаже:',
             reply_markup=reply_markup,
         )
-        return
     elif update.message:
         update.message.reply_text(
             text='Сегодня в продаже:',
             reply_markup=reply_markup,
         )
-        return
 
 
 def send_cart(bot, update):

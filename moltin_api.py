@@ -57,7 +57,6 @@ def add_product_to_cart(token, cart_id, product_id, quantity):
         json=json_data,
     )
     response.raise_for_status()
-    return
 
 
 def delete_cart_item(token, cart_id, product_id):
@@ -69,7 +68,6 @@ def delete_cart_item(token, cart_id, product_id):
         headers=headers,
     )
     response.raise_for_status()
-    return
 
 
 def get_cart(token, cart_id):
@@ -101,7 +99,6 @@ def create_customer(token, name, email):
         json=json_data,
     )
     response.raise_for_status()
-    return
 
 
 def create_moltin_token(client_id, client_secret):
